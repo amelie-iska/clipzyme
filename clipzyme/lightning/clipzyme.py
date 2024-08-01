@@ -97,6 +97,9 @@ class CLIPZyme(pl.LightningModule):
         super(CLIPZyme, self).__init__()
         if args is not None:
             checkpoint_path = args.checkpoint_path
+            self.use_as_protein_encoder = args.use_as_protein_encoder
+            self.use_as_reaction_encoder = args.use_as_reaction_encoder
+
         # Check if path exists
         if (checkpoint_path is None) or (not os.path.exists(checkpoint_path)):
             try:
@@ -218,9 +221,9 @@ class CLIPZyme(pl.LightningModule):
             )
 
         if self.use_as_protein_encoder:
-            protein_hiddens = model_output["hidden"]
+            protein_hiddens = self.extract_protein_features(batch)
         if self.use_as_reaction_encoder:
-            reaction_hiddens = model_output["hidden"]
+            reaction_hiddens = self.extract_reaction_features(batch)
 
         output = CLIPZymeOutput(
             scores=reaction_scores,
@@ -312,8 +315,6 @@ class CLIPZyme(pl.LightningModule):
         torch.Tensor
             Protein features.
         """
-        self.model.args.use_as_protein_encoder = True
-
         if cif_path is not None:
             assert (
                 esm_dir is not None
@@ -329,8 +330,10 @@ class CLIPZyme(pl.LightningModule):
             ]
             batch = default_collate([{"graph": g} for g in protein_graphs])
 
-        model_output = self.model(batch)
-        return model_output["hidden"]
+        protein_features = self.model.encode_protein(batch)
+        protein_features = protein_features / protein_features.norm(dim=1, keepdim=True)
+
+        return protein_features
 
     def extract_reaction_features(
         self, batch: dict = None, reaction: Union[str, List[str]] = None
@@ -350,7 +353,6 @@ class CLIPZyme(pl.LightningModule):
         torch.Tensor
             Reaction features.
         """
-        self.model.args.use_as_reaction_encoder = True
         if reaction is not None:
             if isinstance(reaction, str):
                 reaction = [reaction]
@@ -364,9 +366,12 @@ class CLIPZyme(pl.LightningModule):
                     for rxn in reactions
                 ]
             )
-        model_output = self.model(batch)
+        substrate_features = self.model.encode_reaction(batch)
+        substrate_features = substrate_features / substrate_features.norm(
+            dim=1, keepdim=True
+        )
 
-        return model_output["hidden"]
+        return substrate_features
 
     def store_in_predictions(self, preds: dict, storage_dict: dict) -> dict:
         """
