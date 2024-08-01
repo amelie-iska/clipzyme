@@ -1005,9 +1005,6 @@ class EnzymeMapGraph(EnzymeMap):
                     yvec[v[".".join(split_ec[: int(k)])]] = 1
                     item[f"ec{k}"] = yvec
 
-            if self.args.load_wln_cache_in_dataset:
-                item["product_candidates"] = self.cache.get(rowid)
-
             if self.args.use_protein_graphs:
                 if self.args.cache_path:
                     try:
