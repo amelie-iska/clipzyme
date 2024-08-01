@@ -167,7 +167,7 @@ class EnzymeReactionCLIP(AbstractModel):
             [new_edge_indices[0]]
             + [ei + cum_num_nodes[i] for i, ei in enumerate(new_edge_indices[1:])]
         )
-        reactants_and_products = batch["reactants"]
+        reactants_and_products = batch["reactants"].clone()
         reactants_and_products.edge_attr = new_edge_attr
         reactants_and_products.edge_index = new_edge_index
 
