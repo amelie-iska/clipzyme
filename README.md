@@ -12,17 +12,20 @@ Table of contents
 =================
 
 <!--ts-->
-   * [Installation](#installation)
-   * [Checkpoints and Data Files](#checkpoints-and-data-files)
-   * [Screening with CLIPZyme](#screening-with-clipzyme)
-        * [Using CLIPZyme's screening set](#using-clipzyme's-screening-set)
-        * [Using your own screening set](#using-your-own-screening-set)
-            * [Interactive (slow)](#interactive-slow)
-            * [Batched (fast)](#batched-fast)
-   * [Reproducing published results](#reproducing-published-results)
-        * [Data processing](#data-processing)
-        * [Training and evaluation](#training-and-evaluation)
-   * [Citation](#citation)
+- [CLIPZyme](#clipzyme)
+- [Table of contents](#table-of-contents)
+- [Installation:](#installation)
+- [Checkpoints and Data Files:](#checkpoints-and-data-files)
+- [Screening with CLIPZyme](#screening-with-clipzyme)
+  - [Using CLIPZyme's screening set](#using-clipzymes-screening-set)
+  - [Using your own screening set](#using-your-own-screening-set)
+    - [Interactive (slow)](#interactive-slow)
+    - [Batched (fast)](#batched-fast)
+- [Reproducing published results](#reproducing-published-results)
+  - [Data processing](#data-processing)
+  - [Training and evaluation](#training-and-evaluation)
+  - [Downloading Batched AlphaFold Database Structures](#downloading-batched-alphafold-database-structures)
+  - [Citation](#citation)
     
 <!--te-->
 
@@ -102,28 +105,36 @@ enzyme_scores = screen_hiddens @ reaction_embedding.T # (261907, 1)
 
 Prepare your data as a CSV in the following format, and save it as `files/new_data.csv`. For the cases where we wish only to obtain the hidden representations of the sequences, the `reaction` column can be left empty (and vice versa).
 
-| reaction | sequence | protein_id | cif |
-|----------|----------|------------|-----|
-| [CH3:1][N+:2]([CH3:3])([CH3:4])[CH2:5][CH:6]=[O:7].[O:9]=[O:10].[OH2:8]>>[CH3:1][N+:2]([CH3:3])([CH3:4])[CH2:5][C:6](=[O:7])[OH:8].[OH:9][OH:10] |MGLSDGEWQLVLNVWGKVEAD<br>IPGHGQEVLIRLFKGHPETLE<br>KFDKFKHLKSEDEMKASEDLK<br>KHGATVLTALGGILKKKGHHE<br>AELKPLAQSHATKHKIPIKYL<br>EFISEAIIHVLHSRHPGDFGA<br>DAQGAMNKALELFRKDIAAKY<br>KELGYQG | P69905 | 1a0s.cif |
+| reaction                                                                                                                                         | sequence                                                                                                                                                                               | protein_id | cif      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
+| [CH3:1][N+:2]([CH3:3])([CH3:4])[CH2:5][CH:6]=[O:7].[O:9]=[O:10].[OH2:8]>>[CH3:1][N+:2]([CH3:3])([CH3:4])[CH2:5][C:6](=[O:7])[OH:8].[OH:9][OH:10] | MGLSDGEWQLVLNVWGKVEAD<br>IPGHGQEVLIRLFKGHPETLE<br>KFDKFKHLKSEDEMKASEDLK<br>KHGATVLTALGGILKKKGHHE<br>AELKPLAQSHATKHKIPIKYL<br>EFISEAIIHVLHSRHPGDFGA<br>DAQGAMNKALELFRKDIAAKY<br>KELGYQG | P69905     | 1a0s.cif |
 
 
 ### Interactive (slow)
     
 ```python
+from torch.utils.data import DataLoader
 from clipzyme import CLIPZyme
 from clipzyme import ReactionDataset
+from clipzyme.utils.loading import ignore_None_collate
 
 ## Create reaction dataset
 #-------------------------
-reaction_dataset = ReactionDataset(
-  dataset_file_path = "files/new_data.csv",
-  esm_dir = "/path/to/esm2_dir",
-  protein_cache_dir = "/path/to/protein_cache", # optional, where to cache processed protein graphs
+reaction_dataset = DataLoader(
+  ReactionDataset(
+    dataset_file_path = "files/new_data.csv",
+    esm_dir = "/path/to/esm2_dir",
+    protein_cache_dir = "/path/to/protein_cache", # optional, where to cache processed protein graphs
+  ),
+  batch_size=1,
+  collate_fn=ignore_None_collate,
 )
+
 
 ## Load the model
 #----------------
 model = CLIPZyme(checkpoint_path="files/clipzyme_model.ckpt")
+model = model.eval() # optional 
 
 ## For reaction-enzyme pair
 #--------------------------
